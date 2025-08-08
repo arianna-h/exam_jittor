@@ -56,7 +56,7 @@ python setup.py develop
 	- 利用回归偏移量和对应的anchor，形成ROI。由二分类的前景分数排序后对ROI执行nms筛选得到Top-K个Proposal。
 	- **Loss**:在初始图像铺满的anchor和GT进行IoU计算，以IoU阈值筛选正负样本共256个。由anchor的回归偏移量和二分类分数计算RPN的Loss。
 4. 检测器：
-	- **样本匹配及筛选**：利用筛选的Proposal，与GT框进行IoU计算，以IoU阈值0.5进行样本匹配，得到一批数量均匀的正样本和负样本。为了更好得训练模型，代码中会将GT也加入Proposal，得到高质量的样本。
+	- **样本匹配及筛选**：利用筛选的Proposal，与GT框进行IoU计算，以IoU阈值0.5进行样本匹配，得到一批数量均匀的正样本和负样本。为了更好得训练模型，代码中会将GT也加入Proposal，作为高质量的Proposal。
 	- 对Proposal指示的ROI区域进行ROI Pooling或ROI Align得到ROI特征，检测器利用两个全连接层得到所有类别的分数，以及相对于ROI的回归偏移（每一类都会生成一个）。
 	- **Loss**：利用匹配阶段分配的标签取出对应的偏移量，作为改类别的回归的预测结果。由对应回归结果和分类分数计算检测器的Loss。
 5. Loss：由RPN Loss和检测器 Loss 加和得到最终Loss。
