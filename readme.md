@@ -7,7 +7,18 @@
 实验中根据VOC2012中的voc_total_coco.json，划分样本类别均衡8：2进行训练和验证
 ## Jittor版本主要文件目录
 
-<pre> ```text FasterRCNN/ ├── dataset/ # Pascal VOC数据集接口 ├── log/ # 两个框架实现的训练记录 ├── model/ # 模型组成文件 ├── pascal_anno/ # 划分数据集方法 ├── util/ # 工具函数 ├── main.py # 训练文件 ├── test.py # 测试文件 ├── requirement.txt # 环境需求 └── README.md ``` </pre>
+<pre> ```
+text FasterRCNN/ 
+├── dataset/ # Pascal VOC数据集接口 
+├── log/ # 两个框架实现的训练记录 
+├── model/ # 模型组成文件 
+├── pascal_anno/ # 划分数据集方法 
+├── util/ # 工具函数 
+├── main.py # 训练文件 
+├── test.py # 测试文件 
+├── requirement.txt # 环境需求 
+└── README.md 
+``` </pre>
 
 ## 训练
 - 数据集
@@ -15,7 +26,7 @@
 数据集需要预先下载Pascal数据集，在/pascal_anno下的split_data.py中指定voc_total_coco.json和图片目录/VOCdevkit/VOC2012/JPEGImages，划分训练和验证数据，得到两个Pascal Voc标注文件进行数据加载
 - 环境
 
-'''
+<pre> ```
 conda create -n 环境名 python=3.10
 conda activate 环境名
 cd ./FasterRCNN
@@ -25,7 +36,8 @@ pip install -r requriements.txt
 cd ../JDet
 pip install -r requirements.txt
 python setup.py develop
-'''
+``` </pre>
+
 - 训练
 
 在main.py中配置后直接运行
