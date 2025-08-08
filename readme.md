@@ -4,18 +4,19 @@
 以及Pytorch版对应源码：
 https://github.com/bubbliiiing/faster-rcnn-pytorch
 实验中根据VOC2012中的voc_total_coco.json，划分样本类别均衡8：2进行训练和验证
-## Jittor版本文件目录
+## Jittor版本主要文件目录
+'''
 FasterRCNN/
-├──dataset/              #Pascal VOC数据集接口
-├──log/ #两个框架实现的训练记录
+├── dataset/              #Pascal VOC数据集接口
 ├── model/               #模型组成文件pascal_anno
 ├── pascal_anno/     #划分数据集方法
-├── util/                     #实现工具
+├── utils/                     #实现工具
 ├── main.py  #训练文件
-├── test.py  #测试文件
+├── predict.py  #检测当张图片
 ├── requirement.txt   # 环境需求
+├── test.py  #测试文件
 └── README.md
-
+'''
 ## 训练
 - 数据集
 
@@ -41,6 +42,7 @@ python setup.py develop
 加载训练好的模型以及数据集，利用test.py测试
 
 ## 训练流程
+![流程图](record/流程.png)
 
 1. 创建模型，加载预训练的CNN BackBone后转为模型特征提取器
 2. BackBone：输入图片，由Backbone初步提取图像特征，多尺度特征图宽高为原图像下采样16倍
@@ -56,26 +58,25 @@ python setup.py develop
 5. Loss：由RPN Loss和检测器 Loss 加和得到最终Loss。
 
 ## 两个版本实现的性能
+- AP曲线
+![AP@50](record/AP.png)
 
 
 ## Jittor版本性能
-自己构建的Jittor版本训练性能上升缓慢，因此进行了更多epoch的训练。原因还不清楚。但从Loss曲线观察是检测器回归问题。
+自己构建的Jittor版本训练性能上升缓慢，原因还不清楚。但从Loss曲线观察是检测器回归问题。详细的训练记录在record/jittor_train_log.txt。
 
 - loss
-
-
-- AP@50
-
+![Loss](record/loss_jittor.png)
 
 
 ## Pytorch版本性能
-Pytorch版本性能上升较快。
+Pytorch版本性能上升较快，具体loss训练记录在record/pytorch_train_log.txt中。
 - loss
+![Loss](record/loss_pytorch.png)
 
-- AP@50
 
 - 最终性能
-
+由于Jittor版本训练性能不佳，只对Pytorch版本进行了COCO版本的测试
 ```
  Average Precision  (AP) @[ IoU=0.50:0.95 | area=   all | maxDets=100 ] = 0.348
  Average Precision  (AP) @[ IoU=0.50      | area=   all | maxDets=100 ] = 0.614
@@ -90,4 +91,3 @@ Pytorch版本性能上升较快。
  Average Recall     (AR) @[ IoU=0.50:0.95 | area=medium | maxDets=100 ] = 0.395
  Average Recall     (AR) @[ IoU=0.50:0.95 | area= large | maxDets=100 ] = 0.593
 ```
-## 流程图
