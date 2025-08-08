@@ -6,6 +6,7 @@
 
 实验中根据VOC2012中的voc_total_coco.json，划分样本类别均衡8：2进行训练和验证
 ## Jittor版本主要文件目录
+
 '''
 FasterRCNN/
 ├── dataset/              #Pascal VOC数据集接口
@@ -23,6 +24,7 @@ FasterRCNN/
 
 数据集需要预先下载Pascal数据集，在/pascal_anno下的split_data.py中指定voc_total_coco.json和图片目录/VOCdevkit/VOC2012/JPEGImages，划分训练和验证数据，得到两个Pascal Voc标注文件进行数据加载
 - 环境
+
 '''
 conda create -n 环境名 python=3.10
 conda activate 环境名
