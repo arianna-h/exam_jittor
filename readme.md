@@ -1,10 +1,10 @@
 # Faster RCNN Jittor实现
 
-这个项目代码实现参考了博客：https://blog.csdn.net/weixin_44791964/article/details/105739918 
+这个项目代码流程接口等实现参考了博客：https://blog.csdn.net/weixin_44791964/article/details/105739918 
 
 以及Pytorch版对应源码：https://github.com/bubbliiiing/faster-rcnn-pytorch
 
-实验中根据VOC2012中的voc_total_coco.json，划分样本类别均衡8：2进行训练和验证
+实验中根据VOC2012中的voc_total_coco.json，划分样本类别均衡8：2进行训练和验证。
 ## Jittor版本主要文件目录
 
 <pre> 
@@ -25,7 +25,6 @@ text FasterRCNN/
 
 数据集需要预先下载Pascal数据集，在/pascal_anno下的split_data.py中指定voc_total_coco.json和图片目录/VOCdevkit/VOC2012/JPEGImages，划分训练和验证数据，得到两个Pascal Voc标注文件进行数据加载
 - 环境
-
 <pre> 
 conda create -n 环境名 python=3.10
 conda activate 环境名
@@ -49,8 +48,8 @@ python setup.py develop
 ## 训练流程
 ![流程图](record/流程.png)
 
-1. 创建模型，加载预训练的CNN BackBone后转为模型特征提取器
-2. BackBone：输入图片，由Backbone初步提取图像特征，多尺度特征图宽高为原图像下采样16倍
+1. 创建模型，加载预训练的CNN BackBone后作为u模型特征提取器。
+2. BackBone：输入图片，由Backbone初步提取图像特征，单尺度特征图宽高为原图像下采样16倍。
 3. RPN：
 	- 按照初始设置，预定义三种尺度：128，256，512大小和三种比例2:1、1:1、1:2共九个基础anchor。将特征图网格映射回原图尺寸，然后在每个网格位置生成以网格为中心的9个anchor，得到图像上的anchor。
 	- 将Backbone提供的图像特征由3×3的卷积层提取局部特征，然后利用两个1×1卷积层分别得到anchor对应的回归偏移量和二分类分数，形成初步Proposal。
