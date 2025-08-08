@@ -53,11 +53,11 @@ class EvalCallback():
         image_shape = np.array(np.shape(image)[0:2])
         input_shape = get_new_img_size(image_shape[0], image_shape[1])
 
-        # RGB图像的预测
+        #RGB图像的预测
         image       = cvtColor(image)
         
-        # 给原图像缩放短边为600的大小上
-        image_data  = resize_image(image, [input_shape[1], input_shape[0]])
+        
+        image_data  = resize_image(image, [input_shape[1], input_shape[0]])#给原图像缩放短边为600的大小上
         image_data  = np.expand_dims(np.transpose(preprocess_input(np.array(image_data, dtype='float32')), (2, 0, 1)), 0)
 
         with jt.no_grad():
@@ -73,11 +73,8 @@ class EvalCallback():
             #利用classifier的预测结果对建议框进行解码，获得预测框
             results = self.bbox_util.forward(roi_cls_locs, roi_scores, rois, image_shape, input_shape, 
                                                     nms_iou = self.nms_iou, confidence = self.confidence)
-   
-   
-
-
-            #没有检测到物体
+ 
+            #没有检测到物体 直接返回
             if len(results[0]) <= 0:
                 return 
             top_label = np.array(results[0][:, 5], dtype = 'int32')

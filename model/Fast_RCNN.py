@@ -18,7 +18,6 @@ class Fast_RCNN(nn.Module):
         #   对ROIPooling后的的结果进行分类
 
         self.score = nn.Linear(in_channel, n_class)
-        #-----------------------------------#
 
         self.ratio=spatial_scale
 
@@ -53,7 +52,7 @@ class Fast_RCNN(nn.Module):
         # 转换 roi_i 为 float32 （数值不变，只是类型变成 float32）
        
         indices_and_rois = jt.concat([roi_idx[:, None], roi_map], dim=1)
-        # 拼接，最终整体是 float32，符合 roi_op 的要求
+        #拼接，最终整体是float32，符合roi的要求
 
         # 传入 roi_op
         pool = self.roi_op(features, indices_and_rois)
@@ -106,36 +105,35 @@ class Fast_RCNN_o(nn.Module):
         for i in range(len(proposals)):
             n = proposals[i][0].shape[0]
             batch_indices.append(jt.full((n,1), i))
-        batch_indices = jt.concat(batch_indices, dim=0)  # [sum(N_i), 1]
+        batch_indices = jt.concat(batch_indices, dim=0)  #[sum(N_i), 1]
 
-        batch_rois_with_index = jt.concat([batch_indices, batch_rois], dim=1)  # [sum(N_i), 5]
+        batch_rois_with_index = jt.concat([batch_indices, batch_rois], dim=1)  #[sum(N_i), 5]
 
         # roi pooling
-        x = self.roi_op(features, batch_rois_with_index)  # [sum(N_i), C, pooled_h, pooled_w]
+        x = self.roi_op(features, batch_rois_with_index)  #[sum(N_i), C, pooled_h, pooled_w]
 
         x = x.flatten(1)
       #  x = nn.relu(self.fc1(x))
       #  x = nn.relu(self.fc2(x))
-        cls_scores = self.cls_score(x)                     # [sum(N_i), num_classes]
-        bbox_preds = self.bbox_pred(x)                     # [sum(N_i), num_classes*4]
+        cls_scores = self.cls_score(x)                  
+        bbox_preds = self.bbox_pred(x)                    
 
         # reshape bbox_preds -> [N, num_classes, 4]
         N = bbox_preds.shape[0]
         bbox_preds = bbox_preds.reshape(N, -1, 4)
 
-        # 预测类别
+    #预测类别
         if labels is None:
-            # 推理时用最高分类别索引
+        #推理时用最高分类别索引
             labels,_ = jt.argmax(cls_scores,dim=1)
         else:
-            # 训练时保证labels是LongTensor且长度N
-            labels = labels.reshape(-1)
+            labels = labels.reshape(-1) #训练时保证labels是LongTensor且长度N
 
-        # 选择对应类别的bbox回归参数
+        #选择对应类别的bbox回归参数
         indices = jt.arange(N)
         selected_bbox_preds = bbox_preds[indices, labels]  # [N, 4]
 
-        # 按照batch_offsets拆分成list返回
+        #按照batch_offsets拆分成list返回
         cls_batch = []
         box_batch = []
         start_idx = 0
@@ -148,26 +146,19 @@ class Fast_RCNN_o(nn.Module):
         return cls_batch, box_batch
 
 
-
-
     def init_weights(self):
         import math
         import jittor.init as init
-
-        # fc1 和 fc2：全连接层 Xavier 初始化
         init.xavier_uniform_(self.fc1.weight)
         init.constant_(self.fc1.bias, 0)
 
         init.xavier_uniform_(self.fc2.weight)
         init.constant_(self.fc2.bias, 0)
 
-        # cls_score：Xavier 初始化，bias 用先验概率
         prior_prob = 0.01
         bias_value = -math.log((1 - prior_prob) / prior_prob)
         init.xavier_uniform_(self.cls_score.weight)
         init.constant_(self.cls_score.bias, bias_value)
-
-        # bbox_pred：Xavier 初始化也可（更常见），或保持为0也行
         init.xavier_uniform_(self.bbox_pred.weight)
         init.constant_(self.bbox_pred.bias, 0)
 

@@ -2,12 +2,12 @@ import jittor as jt
 from jittor import nn
 from datetime import datetime
 import numpy as np
+
 def clip(tensor, min_val, max_val):
     return jt.minimum(jt.maximum(tensor, min_val), max_val)
 
-
+#计算iou  C/A+B-C
 def bbox_iou(bbox_a, bbox_b):
-    #if bbox_a.shape[1] != 4 or bbox_b.shape[1] != 4:
     if hasattr(bbox_a, 'numpy'):
         bbox_a = bbox_a.numpy()
     if hasattr(bbox_b, 'numpy'):
@@ -19,7 +19,7 @@ def bbox_iou(bbox_a, bbox_b):
     area_b = np.prod(bbox_b[:, 2:] - bbox_b[:, :2], axis=1)
     return area_i / (area_a[:, None] + area_b - area_i)
 
-
+#bbox转偏移
 def bbox2loc(src_bbox, dst_bbox):
     #确保输入是Jittor张量
     if not isinstance(src_bbox, jt.Var):
@@ -47,7 +47,7 @@ def bbox2loc(src_bbox, dst_bbox):
     return jt.stack([dx, dy, dw, dh], dim=1)
 
 
-
+#映射回原图坐标
 def loc2bbox(src_bbox, loc): #[N, 4]    #[N, 4 * num_classes]
     if src_bbox.size()[0] == 0:
         return jt.zeros((0, 4), dtype=loc.dtype)
@@ -83,7 +83,6 @@ def log_training_status(global_step, epoch, total_loss, dect_losses, rpn_losses,
     """
     记录训练损失日志（单行格式
     """
-
     dect_box_val, dect_cls_val= [x.item() for x in dect_losses]
     rpn_box_val, rpn_cls_val= [x.item() for x in rpn_losses]
 
@@ -109,7 +108,7 @@ def log_training_status(global_step, epoch, total_loss, dect_losses, rpn_losses,
         f"rpn_loss: {rpn_total} (cls: {rpn_cls}, box: {rpn_box})\n"
     )
     
-    print(log_line.strip())  # 控制台输出（可选）
+    print(log_line.strip())  
     with open(log_path,'a') as f:
         f.write(log_line)
 
@@ -145,24 +144,22 @@ def format_per_class_results(coco_eval, cat_id_to_name):
 
     for i, cat_id in enumerate(cat_ids):
         name = cat_id_to_name[cat_id]
-        # AP: mean over IoU=0.5:0.95, area=all, maxDets=100
+        # AP:mean 
         precision = precisions[:, :, i, 0, 2]
         valid = precision[precision > -1]
         ap = valid.mean() if valid.size else float('nan')
 
-        # Recall: IoU=0.5:0.95, area=all, maxDets=100
+        #Recall:IoU=0.5:0.95
         recall = recalls[:, i, 0, 2]
         valid = recall[recall > -1]
         rec = valid.mean() if valid.size else float('nan')
-
-        # GT/Dets
         gts = coco_eval.evalImgs[i::len(cat_ids)]
         gt_num = sum([gi['gtIds'].__len__() for gi in gts if gi is not None])
         det_num = sum([gi['dtIds'].__len__() for gi in gts if gi is not None])
 
         ap_per_class.append((name, gt_num, det_num, rec, ap))
 
-    # 排序按类别名
+    #排序按类别名
     ap_per_class.sort(key=lambda x: x[0])
     lines = []
     lines.append("+--------------+------+-------+--------+-------+")
@@ -172,7 +169,7 @@ def format_per_class_results(coco_eval, cat_id_to_name):
         lines.append(f"| {name:<12} | {gts:<4} | {dets:<5} | {rec:.3f}  | {ap:.3f} |")
     lines.append("+--------------+------+-------+--------+-------+")
 
-    # mean
+    #平均结果
     mean_ap = np.mean([x[-1] for x in ap_per_class if not np.isnan(x[-1])])
     mean_rec = np.mean([x[-2] for x in ap_per_class if not np.isnan(x[-2])])
     lines.append(f"| mean results | ---- | ---- | {mean_rec:.3f}  | {mean_ap:.3f} |")
@@ -202,36 +199,15 @@ class AnchorTargetCreator(object):
             return np.zeros_like(anchor), label
 
     def _calc_ious(self, anchor, bbox):
-        #----------------------------------------------#
-        #   anchor和bbox的iou
-        #   获得的ious的shape为[num_anchors, num_gt]
-        #----------------------------------------------#
 
-        ious = bbox_iou(anchor, bbox)
+        ious = bbox_iou(anchor, bbox) #shape为[num_anchors, num_gt]
        # print(f"ious in calc {ious.shape}") # all  M
         if len(bbox)==0:
             return np.zeros(len(anchor), np.int32), np.zeros(len(anchor)), np.zeros(len(bbox))
-        #---------------------------------------------------------#
-        #   获得每一个先验框最对应的真实框  [num_anchors, ]
-        #---------------------------------------------------------#
       #  ious_np = ious.numpy()
         argmax_ious ,max_ious= jt.argmax(ious,dim=1)  # 每个anchor 对应的gt
-        #argmax_ious = ious.argmax(axis=1)
-        #---------------------------------------------------------#
-        #   找出每一个先验框最对应的真实框的iou  [num_anchors, ]
-        #---------------------------------------------------------#
-      #  max_ious = np.max(ious_np, axis=1) #每个anchor 的最大iou
-        #---------------------------------------------------------#
-        #   获得每一个真实框最对应的先验框  [num_gt, ]
-        #---------------------------------------------------------#
-        gt_argmax_ious,_ = jt.argmax(ious,dim=0)  #每个gt对应的anchor
-        #---------------------------------------------------------#
-        #   保证每一个真实框都存在对应的先验框
-        #---------------------------------------------------------#
-     #   print(gt_argmax_ious)
-     #   print(ious)
-     #   print(argmax_ious)
 
+        gt_argmax_ious,_ = jt.argmax(ious,dim=0)  #每个gt对应的anchor，主要确保gt有匹配
    
      #   print("flag")
         for i in range(len(gt_argmax_ious)): 
@@ -240,43 +216,23 @@ class AnchorTargetCreator(object):
         return argmax_ious, max_ious, gt_argmax_ious
         
     def _create_label(self, anchor, bbox):
-        # ------------------------------------------ #
-        #   1是正样本，0是负样本，-1忽略
-        #   初始化的时候全部设置为-1
-        # ------------------------------------------ #
-        label = np.empty((len(anchor),), dtype=np.int32)
-        label.fill(-1)
 
-        # ------------------------------------------------------------------------ #
-        #   argmax_ious为每个先验框对应的最大的真实框的序号         [num_anchors, ]
-        #   max_ious为每个真实框对应的最大的真实框的iou             [num_anchors, ]
-        #   gt_argmax_ious为每一个真实框对应的最大的先验框的序号    [num_gt, ]
-        # ------------------------------------------------------------------------ #
-        argmax_ious, max_ious, gt_argmax_ious = self._calc_ious(anchor, bbox)
-        # argmax iou 就是anchro对应的标签
-        # ----------------------------------------------------- #
-        #   如果小于门限值则设置为负样本
-        #   如果大于门限值则设置为正样本
-        #   每个真实框至少对应一个先验框
-        # ----------------------------------------------------- #
+        label = np.empty((len(anchor),), dtype=np.int32)
+        label.fill(-1) #-1 在计算交叉熵回忽略
+
+        argmax_ious, max_ious, gt_argmax_ious = self._calc_ious(anchor, bbox) #根据iou采样来计算loss
         label[max_ious < self.neg_iou_thresh] = 0
         label[max_ious >= self.pos_iou_thresh] = 1
         if len(gt_argmax_ious)>0:
             label[gt_argmax_ious] = 1 # 把gt对应的框设置维1
 
-        # ----------------------------------------------------- #
-        #   判断正样本数量是否大于128，如果大于则限制在128
-        # ----------------------------------------------------- #
-        n_pos = int(self.pos_ratio * self.n_sample)
+        n_pos = int(self.pos_ratio * self.n_sample) #限制正样本
         pos_index = np.where(label == 1)[0]
         if len(pos_index) > n_pos:
             disable_index = np.random.choice(pos_index, size=(len(pos_index) - n_pos), replace=False)
             label[disable_index] = -1
 
-        # ----------------------------------------------------- #
-        #   平衡正负样本，保持总数量为256
-        # ----------------------------------------------------- #
-        n_neg = self.n_sample - np.sum(label == 1)
+        n_neg = self.n_sample - np.sum(label == 1) #负样本=总-正
         neg_index = np.where(label == 0)[0]
         if len(neg_index) > n_neg:
             disable_index = np.random.choice(neg_index, size=(len(neg_index) - n_neg), replace=False) #其他非正非负设置为-1
@@ -297,19 +253,15 @@ class ProposalTargetCreator(object):
 
     def __call__(self, roi, bbox, label, loc_normalize_std=(0.1, 0.1, 0.2, 0.2)): 
 
-
-
         roi = np.concatenate((roi.numpy(), bbox),axis=0)  # 把gt加入roi  3000+M , 4
 
         iou = bbox_iou(roi, bbox)  # 3000+m , M
-
         if len(bbox)==0:
             print("????")
             gt_assignment = np.zeros(len(roi), np.int32)
             max_iou = np.zeros(len(roi))
             gt_roi_label = np.zeros(len(roi))
         else:
-
             gt_assignment = iou.argmax(axis=1)
             max_iou = iou.max(axis=1)
             # 真实框的标签要+1因为有背景的存在
@@ -326,11 +278,10 @@ class ProposalTargetCreator(object):
         neg_roi_per_this_image = int(min(neg_roi_per_this_image, neg_index.size))
         if neg_index.size > 0:
             neg_index = np.random.choice(neg_index, size=neg_roi_per_this_image, replace=False)
-                   
-        #---------------------------------------------------------#
-        #   sample_roi      [n_sample, 4]
-        #   gt_roi_loc      [n_sample, 4]
-        #   gt_roi_label    [n_sample, ]
+
+        #ample_roi      [n_sample, 4]
+        #gt_roi_loc      [n_sample, 4]
+        #gt_roi_label    [n_sample, ]
         keep_index = np.append(pos_index, neg_index)
 
         sample_roi = roi[keep_index]
@@ -431,7 +382,7 @@ class LRScheduler:
             param_group['lr'] = lr
         return lr
 
-
+#为了与pytroch实现对齐 以及查找bug 训练一致
 class FasterRCNNTrainer(nn.Module):
     def __init__(self, model_train):
         super(FasterRCNNTrainer, self).__init__()
@@ -466,14 +417,9 @@ class FasterRCNNTrainer(nn.Module):
     def forward(self, imgs, bboxes, labels):
         n           = imgs.shape[0]
         img_size    = imgs.shape[2:]
-        #-------------------------------#
-        #   获取公用特征层
-        #-------------------------------#
+
         base_feature = self.model_train(imgs, mode = 'extractor')
 
-        # -------------------------------------------------- #
-        #   利用rpn网络获得调整参数、得分、建议框、先验框
-        # -------------------------------------------------- #
         rpn_locs, rpn_scores, rois, roi_indices, anchor = self.model_train(x = [base_feature, img_size], mode = 'rpn')
         
         rpn_loc_loss_all, rpn_cls_loss_all, roi_loc_loss_all, roi_cls_loss_all  = 0, 0, 0, 0
@@ -485,48 +431,33 @@ class FasterRCNNTrainer(nn.Module):
             rpn_score   = rpn_scores[i] # all ,2   anchor [all,4]
             roi         = rois[i] # 3000,4 
 
-        #    print(f"bbox {bbox.shape}")
           #  print(f"label {label.shape}")
            # print(f"rpn_loc {rpn_loc.shape}")
            # print(f" rpn_score { rpn_score.shape}")
            # print(f"roi {roi.shape}")
            # print(f"anchor {anchor.shape}")
-            # -------------------------------------------------- #
-            #   利用真实框和先验框获得建议框网络应该有的预测结果
-            #   给每个先验框都打上标签
-            #   gt_rpn_loc      [num_anchors, 4]
-            #   gt_rpn_label    [num_anchors, ]
-            # -------------------------------------------------- #
-            gt_rpn_loc, gt_rpn_label    = self.anchor_target_creator(bbox, anchor[0])   #?
+
+            gt_rpn_loc, gt_rpn_label    = self.anchor_target_creator(bbox, anchor[0])   # 匹配的gt偏移和标签
             #得到  一张图片对应的gt 偏移 gt_rpn_loc 和 lablegt_rpn_label和上面shape一样
 
 
             gt_rpn_loc = jt.array(gt_rpn_loc).type_as(rpn_locs)
             gt_rpn_label = jt.array(gt_rpn_label).type_as(rpn_locs).long()
-            # -------------------------------------------------- #
-            #   分别计算建议框网络的回归损失和分类损失
-            # -------------------------------------------------- #
+
             rpn_loc_loss = self._fast_rcnn_loc_loss(rpn_loc, gt_rpn_loc, gt_rpn_label, self.rpn_sigma) # 回归损失
-       #     print("前景 (1) 个数:", (gt_rpn_label == 1).sum())
+            rpn_cls_loss = nn.cross_entropy_loss(rpn_score, gt_rpn_label, ignore_index=-1) #由于在分配就 忽略-1 并且正负样本均匀了
+         #     print("前景 (1) 个数:", (gt_rpn_label == 1).sum())
          #   print("背景 (0) 个数:", (gt_rpn_label == 0).sum())
          #   print("忽略 (-1) 个数:", (gt_rpn_label == -1).sum())
-            rpn_cls_loss = nn.cross_entropy_loss(rpn_score, gt_rpn_label, ignore_index=-1) #由于在分配就 忽略-1 并且正负样本均匀了
-  
             rpn_loc_loss_all += rpn_loc_loss
             rpn_cls_loss_all += rpn_cls_loss
-            # ------------------------------------------------------ #
-            #   利用真实框和建议框获得classifier网络应该有的预测结果
-            #   获得三个变量，分别是sample_roi, gt_roi_loc, gt_roi_label
-            #   sample_roi      [n_sample, ]
-            #   gt_roi_loc      [n_sample, 4]
-            #   gt_roi_label    [n_sample, ]
-            # ------------------------------------------------------ #
-            sample_roi, gt_roi_loc, gt_roi_label = self.proposal_target_creator(roi, bbox, label, self.loc_normalize_std)
+
+            sample_roi, gt_roi_loc, gt_roi_label = self.proposal_target_creator(roi, bbox, label, self.loc_normalize_std) #检测器的采样
 
             sample_rois.append(sample_roi)
             sample_indexes.append(jt.ones([len(sample_roi),]) * roi_indices[i][0])
             gt_roi_locs.append(gt_roi_loc)
-            gt_roi_labels.append(gt_roi_label)  # 一般 label 用 long（int64）
+            gt_roi_labels.append(gt_roi_label)  #
 
 
         sample_rois     = jt.stack(sample_rois, dim=0) #形成一个大batch 传入处理
@@ -536,9 +467,7 @@ class FasterRCNNTrainer(nn.Module):
        # [B, num , cls ]   [B num cls*4]
 
         for i in range(n):
-            # ------------------------------------------------------ #
-            #   根据建议框的种类，取出对应的回归预测结果
- 
+            #取出对应的类别回归预测结果
             n_sample =roi_cls_locs[i].size(0)
 
             roi_cls_loc     = roi_cls_locs[i] #[B ,num ,cls*4]
@@ -550,10 +479,7 @@ class FasterRCNNTrainer(nn.Module):
        #     print(roi_cls_loc.shape)
             roi_loc     = roi_cls_loc[jt.arange(n_sample), gt_roi_label]   #获取lable 对应的预测偏移  num,4
 
-            # -------------------------------------------------- #
-            #   分别计算Classifier网络的回归损失和分类损失
-            # -------------------------------------------------- #
-          #  print(gt_roi_label)
+        #  print(gt_roi_label)
         #    print(gt_roi_loc)
         #    print(roi_loc)
         #    print(gt_roi_labels)
@@ -569,9 +495,8 @@ class FasterRCNNTrainer(nn.Module):
         return losses
 
     def train_step(self, imgs, bboxes, labels):
-        
 
-        # 前向传播得到各个 loss，最后一个是 total_loss
+        #前向传播得到各个 loss，最后一个是 total_loss
         losses = self.forward(imgs, bboxes, labels)
 
 

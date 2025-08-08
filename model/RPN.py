@@ -44,31 +44,30 @@ class ProposalCreator():
         roi = loc2bbox(anchor, loc)  #转化为proposal xyxy
 
         #防止建议框超出图像边缘 要clamp
-        roi[:, [0, 2]] = jt.clamp(roi[:, [0, 2]], min_v = 0, max_v = img_size[1])
-        roi[:, [1, 3]] = jt.clamp(roi[:, [1, 3]], min_v = 0, max_v = img_size[0])
+        roi[:,[0,2]] = jt.clamp(roi[:, [0,2]], min_v = 0, max_v = img_size[1])
+        roi[:,[1,3]] = jt.clamp(roi[:, [1,3]], min_v = 0, max_v = img_size[0])
      #   print(roi.shape)
 
-        min_size    = self.min_size * scale #x2-x1    y2-y1
-        keep        = jt.where(((roi[:, 2] - roi[:, 0]) >= min_size) & ((roi[:, 3] - roi[:, 1]) >= min_size))[0]
+        min_size= self.min_size * scale #x2-x1    y2-y1
+        keep  = jt.where(((roi[:,2] - roi[:,0]) >= min_size) & ((roi[:,3] - roi[:,1]) >= min_size))[0]
 
 
-        roi         = roi[keep, :]
-        score       = score[keep]
+        roi = roi[keep, :]
+        score = score[keep]
 
         # 根据得分进行排序，选取top 个 nms
-        order,_      = jt.argsort(score, descending=True)
+        order,_= jt.argsort(score, descending=True)
         order = jt.array(order)
         if n_pre_nms > 0:
             order   = order[:n_pre_nms]
-        roi     = roi[order, :]
-        score   = score[order]
+        roi= roi[order, :]
+        score= score[order]
 
         #nms 因为jittro 输入是 x y x y score要先cat
         score_2d = score.unsqueeze(1)
         det = jt.concat([roi, score_2d], dim=1)
         keep    = jt.nms(det, self.nms_iou)
-   #     print(keep.shape)
-       # print(f"rrrr {roi.shape}")
+
        #这里如果nms后数量不够需要 复制现有的 ，可以不复制但后续样本可能减少
         if len(keep) < n_post_nms:
             index_extra = np.random.choice(range(len(keep)), size=(n_post_nms - len(keep)), replace=True)
@@ -240,175 +239,12 @@ class RPN(nn.Module):
     #初始化
     def init_weights(self):
         import jittor.init as init
-
         #滑窗
         init.xavier_uniform_(self.conv1.weight)
         init.constant_(self.conv1.bias, 0)
-
         #坐标回归
         init.xavier_uniform_(self.loc.weight)
         init.constant_(self.loc.bias, 0)
-
         #分类分数
         init.xavier_uniform_(self.score.weight)
         init.constant_(self.score.bias, 0)  
-    '''
-    def select_anchor(self, anchor, pred_cls, pred_box, gt, im_shape, piou=0.6, niou=0.3, clip=True):
-        """
-        筛选 anchor，匹配 ground truth，并生成分类标签和回归目标。
-
-        Args:
-            anchor: [N, 4] 原始 anchor（xyxy）
-            pred_cls: [N] or [N, 1] 分类 logit（前景）
-            pred_box: [N, 4] 预测偏移（tx, ty, tw, th）
-            gt: [M, 4] GT 框（xyxy）
-            im_shape: 图像尺寸 (H, W)
-            piou: 正样本 IOU 阈值
-            niou: 负样本 IOU 阈值
-            clip: 是否 clip anchor 到图像内
-
-        Returns:
-            anchor: 经过筛选后的 anchor
-            pred_cls: 对应 anchor 的分类预测
-            pred_box: 对应 anchor 的回归预测
-            labels: [N] int32, in {-1, 0, 1}（忽略、负样本、正样本）
-            bbox_targets: [N, 4] 回归目标（仅正样本非零）
-        """
-
-        # Step 1: Filter anchors outside image
-        if not clip:
-            x1, y1, x2, y2 = anchor[:, 0], anchor[:, 1], anchor[:, 2], anchor[:, 3]
-            keep_mask = (x1 >= 0) & (y1 >= 0) & (x2 < im_shape[0]) & (y2 < im_shape[1])
-            keep_inds = jt.where(keep_mask)[0]
-            anchor = anchor[keep_inds]
-            pred_cls = pred_cls[keep_inds]
-            pred_box = pred_box[keep_inds]
-        else:
-            anchor, valid_mask = self.clip_boxes(anchor, im_shape)
-            pred_cls = pred_cls[valid_mask]
-            pred_box = pred_box[valid_mask]
-
-        # Step 2: Get foreground scores
-        fg_scores = jt.sigmoid(pred_cls).squeeze(-1)  # shape: [N]
-
-        # Step 3: Inference mode – NMS + TopK
-        if not self.is_training():
-            decoded_boxes = decode_boxes(anchor, pred_box, im_shape[0], im_shape[1])
-            keep_inds = nms_pred(decoded_boxes, fg_scores, iou_threshold=0.8, pre=3000, post=600)
-            anchor = anchor[keep_inds]
-            pred_cls = pred_cls[keep_inds]
-            pred_box = pred_box[keep_inds]
-            return anchor, pred_box  # 推理只需返回框和预测
-
-        # === Training Phase ===
-        # 若无 GT，返回空标签
-        if gt.shape[0] == 0:
-            labels = jt.zeros(anchor.shape[0], dtype=jt.int32)
-            bbox_targets = jt.zeros_like(anchor)
-            return anchor, pred_cls, pred_box, labels, bbox_targets
-
-        # Step 4: IoU匹配
-        ious = iou(anchor, gt)                     # [N, M]
-        gt_inds,max_ious = jt.argmax(ious, dim=1)           # [N]
-       # max_ious = jt.max(ious, dim=1)             # [N]
-
-        # Step 5: 初始标签
-        labels = -jt.ones(anchor.shape[0], dtype=jt.int32)
-        labels[max_ious >= piou] = 1
-        labels[max_ious < niou] = 0
-
-        # Step 6: 每个 GT 至少一个 anchor 匹配
-        pos_inds = (labels == 1).nonzero().squeeze(-1)
-        for gt_idx in range(gt.shape[0]):
-            if not (gt_inds[pos_inds] == gt_idx).any():
-                best_anchor,_ = jt.argmax(ious[:, gt_idx], dim=0)
-                labels[best_anchor] = 1
-                gt_inds[best_anchor] = gt_idx
-
-        # Step 7: 回归目标
-        pos_inds = (labels == 1).nonzero().squeeze(-1)
-        bbox_targets = jt.zeros_like(anchor)
-
-        if len(pos_inds) > 0:
-            pos_anchor = anchor[pos_inds]
-            pos_gt = gt[gt_inds[pos_inds]]
-            std = jt.array([0.1, 0.1, 0.2, 0.2], dtype=jt.float32)
-            encoded = shift_box(pos_anchor, pos_gt)
-            bbox_targets[pos_inds] = encoded * std
-
-        return anchor, pred_cls, pred_box, labels, bbox_targets
-
-
-    #生成anchor 并去掉超过边界的
-    def generate_anchor(self,pred_box,pred_cls,gt,W,H,stride=16):
-        scales = self.setting['scale']
-        aspects = self.setting['aspect']
-        K = len(self.setting['scale']) * len(self.setting['aspect'])
-        anchor_sizes = []
-        for scale in scales:
-            for ratio in aspects:
-                w = scale * math.sqrt(ratio)
-                h = scale / math.sqrt(ratio)
-                anchor_sizes.append([w, h])  #得到不同比例anchor 
-        anchor_sizes = jt.array(anchor_sizes)  # [A, 2]
-        
-    
-        
-        # Step 2: 生成所有特征图位置中心点 (x, y)
-        shift_x = jt.arange(W).float() * stride + stride / 2  #映射回原图 对应坐标
-        shift_y = jt.arange(H).float() * stride + stride / 2
-        x, y = jt.meshgrid(shift_x, shift_y)# [H,W]
-        xy = jt.stack([x, y], dim=-1).reshape(-1, 2)  # [H*W, 2] 
-        L = xy.shape[0]
-
-        # 对每个中心点+每个 anchor 尺寸，生成 [x1,y1,x2,y2]
-        # xy: [L, 2] → [L, 1, 2]
-        # anchor_sizes: [K, 2] → [1, K, 2]
-        centers = xy.reshape(L, 1, 2)
-        sizes = anchor_sizes.reshape(1, K, 2)
-
-        x1y1 = centers - sizes / 2
-        x2y2 = centers + sizes / 2
-
-        # 生成 anchor: [H*W*A, 4]   原始特征图绝对坐标
-        anchor = jt.concat([x1y1, x2y2], dim=-1).reshape(-1, 4)
-        #print(f'生成anchor :{anchor.shape}')
-        # 展平 pred_cls 和 pred_box
-       # print(f"anchor {anchor[:5].numpy()}")
-        pred_cls = pred_cls.permute(1, 2, 0).contiguous().reshape(-1, 1)     # [H, W, K*2] → [H*W*K, 2]
-        pred_box = pred_box.permute(1, 2, 0).contiguous().reshape(-1, 4)     # [H, W, K*4] → [H*W*K, 4]
-        if gt is not None and len(gt) > 0:
-            # 调用匹配函数
-            anchor, pred_cls, pred_box, labels, bbox_targets = self.select_anchor(
-                anchor, pred_cls, pred_box, gt, [W*stride,H*stride]
-            )
-            return anchor, pred_cls, pred_box, labels, bbox_targets
-        else:
-            anchor,  pred_box = self.select_anchor(
-                anchor, pred_cls, pred_box, gt=None, im_shape=[W*stride,H*stride]
-            )
-            return  anchor, pred_box
-
-    #传入anchor和pred ，删去超过边界的anchor和pred，根据与gt的iou分配正负样本
-    def clip_boxes(self, anchor, im_shape):
-        # im_shape = (height, width)
-        x1 = jt.maximum(anchor[:, 0], 0)
-        y1 = jt.maximum(anchor[:, 1], 0)
-        x2 = jt.minimum(anchor[:, 2], im_shape[1] - 1)
-        y2 = jt.minimum(anchor[:, 3], im_shape[0] - 1)
-
-        clipped = jt.stack([x1, y1, x2, y2], dim=1).clone()
-
-        # 过滤无效框
-        valid_mask = (x2 >= x1) & (y2 >= y1)
-        valid_mask = valid_mask.astype('bool')
-
-        # 打印调试信息，确认维度
-      #  print("clipped shape:", clipped.shape)
-      #  print("valid_mask shape:", valid_mask.shape)
-      #  print("valid_mask sum:", valid_mask.sum().item())
-
-        clipped_filtered = clipped[valid_mask]
-
-        return clipped_filtered, valid_mask
-        '''

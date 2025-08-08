@@ -23,7 +23,7 @@ text FasterRCNN/
 ## 训练
 - 数据集
 
-数据集需要预先下载Pascal数据集，在/pascal_anno下的split_data.py中指定voc_total_coco.json和图片目录/VOCdevkit/VOC2012/JPEGImages，划分训练和验证数据，得到两个Pascal Voc标注文件进行数据加载
+数据集需要预先下载Pascal数据集，在/pascal_anno下的split_data.py中指定/VOCdevkit/VOC2012/照片的voc_total_coco.json，划分训练和验证数据，得到两个Pascal Voc标注文件。/pascal_anno文件夹中已有这次实验的划分。
 - 环境
 <pre> 
 conda create -n 环境名 python=3.10
@@ -39,7 +39,7 @@ python setup.py develop
 
 - 训练
 
-在main.py中配置后直接运行
+在main.py中配置路径后运行
 
 - 测试
 

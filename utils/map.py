@@ -16,6 +16,8 @@ matplotlib.use('Agg')
 from matplotlib import pyplot as plt
 import numpy as np
 
+#这个是原来pytorch版本的 ，对齐预测
+
 '''
     0,0 ------> x (width)
      |

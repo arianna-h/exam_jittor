@@ -94,7 +94,7 @@ class Faster_RCNN(nn.Module):
 
         cls = []
         box = []
-        # 按batch处理
+        #按batch处理
         proposal, rpn_loss, rpn_cls_loss, rpn_box_loss = self.rpn(feature, gt_box_list)  # 假设返回 [(anchor, cls_b, box_b, label_b, target_b), ...]
 
         #print(f'处理的batch {len(proposal)}')
@@ -108,7 +108,7 @@ class Faster_RCNN(nn.Module):
             cls.append(cls_b)
             box.append(box_b)
 
-        # 训练 or 推理判断
+        #训练推理判断
         if not self.is_training():
             box_out, score_out, label_out = self.post_process(box, cls)
             return box_out, score_out, label_out
@@ -118,7 +118,7 @@ class Faster_RCNN(nn.Module):
             matched_label_list = []
             matched_gtbox_list = []
 
-            # 这里用 proposal 的 anchor 作为 proposals 传入匹配函数
+            #这里用proposal的anchor作为proposals传入匹配函数
             for i in range(len(proposal)):
                 anchor,_ = proposal[i]
                 pred_box=box[i]
