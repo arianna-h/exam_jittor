@@ -8,6 +8,7 @@
 ## Jittor版本主要文件目录
 
 '''
+
 FasterRCNN/
 ├── dataset/              #Pascal VOC数据集接口
 ├── model/               #模型组成文件pascal_anno
@@ -18,7 +19,9 @@ FasterRCNN/
 ├── requirement.txt   # 环境需求
 ├── test.py  #测试文件
 └── README.md
+
 '''
+
 ## 训练
 - 数据集
 
