@@ -7,20 +7,7 @@
 实验中根据VOC2012中的voc_total_coco.json，划分样本类别均衡8：2进行训练和验证
 ## Jittor版本主要文件目录
 
-'''
-
-FasterRCNN/
-├── dataset/              #Pascal VOC数据集接口
-├── model/               #模型组成文件pascal_anno
-├── pascal_anno/     #划分数据集方法
-├── utils/                     #实现工具
-├── main.py  #训练文件
-├── predict.py  #检测当张图片
-├── requirement.txt   # 环境需求
-├── test.py  #测试文件
-└── README.md
-
-'''
+<pre> ```text FasterRCNN/ ├── dataset/ # Pascal VOC数据集接口 ├── log/ # 两个框架实现的训练记录 ├── model/ # 模型组成文件 ├── pascal_anno/ # 划分数据集方法 ├── util/ # 工具函数 ├── main.py # 训练文件 ├── test.py # 测试文件 ├── requirement.txt # 环境需求 └── README.md ``` </pre>
 
 ## 训练
 - 数据集
