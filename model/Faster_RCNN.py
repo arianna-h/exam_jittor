@@ -32,7 +32,7 @@ class Faster_RCNN(nn.Module):
                         n_test_pre_nms=n_test_pre_nms, 
                         n_test_post_nms=n_test_post_nms
                 )
-            self.head=Fast_RCNN(n_class=num_classes,in_channel=4096,roi_size=(7,7),spatial_scale=1,classifier=classifier)
+            self.head=Fast_RCNN(n_class=num_classes,in_channel=4096,roi_size=(7,7),spatial_scale=1,classifier=classifier,backbone=backbone)
 
         elif backbone=='resnet':
             extractor, classifier = resnet50(pretrained)
@@ -46,7 +46,7 @@ class Faster_RCNN(nn.Module):
                         n_test_pre_nms=n_test_pre_nms, 
                         n_test_post_nms=n_test_post_nms
                 )
-            self.head=Fast_RCNN(n_class=num_classes,in_channel=2048,roi_size=(14,14),spatial_scale=16,classifier=classifier)
+            self.head=Fast_RCNN(n_class=num_classes,in_channel=2048,roi_size=(14,14),spatial_scale=16,classifier=classifier,backbone=backbone)
 
 
     #对齐pytorch版本 ，这里也分为不同模式

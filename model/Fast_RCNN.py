@@ -9,7 +9,7 @@ from jdet.ops.roi_pool import ROIPool
 
 
 class Fast_RCNN(nn.Module):
-    def __init__(self, n_class, in_channel,roi_size, spatial_scale, classifier):
+    def __init__(self, n_class, in_channel,roi_size, spatial_scale, classifier,backbone):
         super(Fast_RCNN, self).__init__()
         self.classifier = classifier
         #   对ROIPooling后的的结果进行回归预测
@@ -23,7 +23,7 @@ class Fast_RCNN(nn.Module):
 
         # roi 特征提取器
         self.roi_op= ROIAlign(output_size=(roi_size[0],roi_size[1]), spatial_scale=1)
-
+        self.backbone=backbone
 
         init.gauss_(self.cls_loc.weight, mean=0.0, std=0.001)
         init.constant_(self.cls_loc.bias, 0.0)
@@ -56,13 +56,13 @@ class Fast_RCNN(nn.Module):
 
         # 传入 roi_op
         pool = self.roi_op(features, indices_and_rois)
-        pool = pool.view(pool.size(0), -1)
+        if self.backbone=="vgg":
         #pool = self.roi_op(features,roi_pos )
-
-        fc=self.classifier(pool)  #两个线性和 激活
-
-       # fc =fc.view(fc.size(0),-1) # 分为batch flatten
-
+            pool = pool.view(pool.size(0), -1)
+            fc=self.classifier(pool)  #两个线性和 激活
+        else:
+            fc=self.classifier(pool)  #两者输出输入不一样
+            fc =fc.view(fc.size(0),-1) # 分为batch flatten
         box= self.cls_loc(fc)  # b*N 4*cls
 
         cls = self.score(fc)   # b*N cls 
