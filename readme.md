@@ -62,13 +62,13 @@ python setup.py develop
 5. Loss：由RPN Loss和检测器 Loss 加和得到最终Loss。
 
 ## 两个版本实现的性能
-两个版本在VGG作为骨干下的训练效果
+两个版本在VGG作为骨干下的训练效果。
 - AP曲线
 ![AP@50](record/AP.png)
 
 
 ## Jittor版本性能
-自己构建的Jittor版本训练性能上升缓慢，原因还不清楚。但从Loss曲线观察是检测器回归问题，目前在用Resnet作为骨干训练观察结果。详细的训练记录在record/jittor_train_log.txt。
+自己构建的Jittor版本训练性能上升缓慢，原因还不清楚。但从Loss曲线观察是检测器回归问题，详细的训练记录在record/jittor_train_log.txt。
 
 - loss
 ![Loss](record/loss_jittor.png)

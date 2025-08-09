@@ -22,7 +22,7 @@ jt.set_global_seed(42) #种子
 batch_size = 10  #bs
 num_epochs = 30  #epoch
 lr = 1e-4        #初始lr
-backbone='vgg'
+backbone='resnet'
 
 
 #数据集类
